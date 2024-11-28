@@ -5,7 +5,8 @@ import json
 import os
 import platform
 import threading
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, TimeoutError
+from urllib3 import PoolManager, Timeout
 
 class FileManagerApp:
     def __init__(self, root):
@@ -138,24 +139,33 @@ class FileManagerApp:
             self.connect_button.config(state=tk.DISABLED)
 
     def connect_to_minio(self):
+        threading.Thread(target=self._connect_to_minio_thread).start()
+
+    def _connect_to_minio_thread(self):
         endpoint = self.endpoint_entry.get()
         access_key = self.access_key_entry.get()
         secret_key = self.secret_key_entry.get()
 
         try:
+            http_client = PoolManager(
+                timeout=Timeout(connect=5, read=5),
+                retries=False
+            )
             self.minio_client = Minio(
                 endpoint,
                 access_key=access_key,
                 secret_key=secret_key,
-                secure=False
+                secure=False,
+                http_client=http_client
             )
-            messagebox.showinfo("Success", "Connected to MinIO Server successfully!")
-            self.save_config(endpoint, access_key, secret_key)
-            self.load_buckets()
-            self.refresh_button.config(state=tk.NORMAL)
+
+            buckets = self.minio_client.list_buckets()
+            self.root.after(0, lambda: messagebox.showinfo("Success", "Connected to MinIO Server successfully!"))
+            self.root.after(0, lambda: self.save_config(endpoint, access_key, secret_key))
+            self.root.after(0, self.load_buckets)
+            self.root.after(0, lambda: self.refresh_button.config(state=tk.NORMAL))
         except Exception as e:
-            print(f"Error: Failed to connect to MinIO: {str(e)}")
-            messagebox.showerror("Error", f"Failed to connect to MinIO: {str(e)}")
+            self.root.after(0, lambda e=e: messagebox.showerror("Error", f"Failed to connect to MinIO: {str(e)}"))
 
     def load_buckets(self):
         for item in self.tree.get_children():
