@@ -253,9 +253,8 @@ class FileManagerApp:
           return
 
       self.progress_text.delete(1.0, tk.END)
-      self.download_button.config(state=tk.DISABLED)  # ปิดการใช้งานปุ่มระหว่างดาวน์โหลด
+      self.download_button.config(state=tk.DISABLED)
 
-      # สร้าง thread สำหรับดาวน์โหลด
       download_thread = threading.Thread(target=self._download_files_thread, args=(selected_files,))
       download_thread.start()
 
@@ -264,7 +263,7 @@ class FileManagerApp:
             results = executor.map(self._download_single_file, selected_files)
 
         for result in results:
-            if result:  # ตรวจสอบว่าผลลัพธ์มีข้อความ
+            if result:
                 self._update_progress(result)
 
         self._update_progress("All downloads completed.\n")
@@ -287,7 +286,7 @@ class FileManagerApp:
             response = self.minio_client.get_object(bucket_name, object_name)
             with open(local_path, 'wb') as file_data:
                 total_size = 0
-                for chunk in response.stream(5 * 1024 * 1024):  # Stream ด้วย chunk ขนาด 5 MB
+                for chunk in response.stream(5 * 1024 * 1024):
                     file_data.write(chunk)
                     total_size += len(chunk)
                     self._update_progress(f"Downloading '{object_name}': {total_size / (1024 * 1024):.2f} MB downloaded...\n")
