@@ -197,11 +197,24 @@ class FileManagerApp:
             self.preview_menu.tk_popup(event.x_root, event.y_root)
 
     def select_file(self):
-        selected_item = self.tree.selection()[0]
-        full_path = self.get_full_path(selected_item)
-        if 'file' in self.tree.item(selected_item, 'tags'):
-            self.preview_listbox.insert(tk.END, full_path)
-        self.check_download_button_state()
+      selected_item = self.tree.selection()[0]
+      if 'file' in self.tree.item(selected_item, 'tags'):
+          full_path = self.get_full_path(selected_item)
+          if full_path not in self.preview_listbox.get(0, tk.END):
+              self.preview_listbox.insert(tk.END, full_path)
+      else:
+          self.select_all_files_in_folder(selected_item)
+      self.check_download_button_state()
+
+    def select_all_files_in_folder(self, folder_item):
+        children = self.tree.get_children(folder_item)
+        for child in children:
+            if 'file' in self.tree.item(child, 'tags'):
+                full_path = self.get_full_path(child)
+                if full_path not in self.preview_listbox.get(0, tk.END):
+                    self.preview_listbox.insert(tk.END, full_path)
+            else:
+                self.select_all_files_in_folder(child)
 
     def get_full_path(self, item):
         path = self.tree.item(item, 'text')
