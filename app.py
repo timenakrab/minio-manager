@@ -116,6 +116,23 @@ class FileManagerApp:
         self.preview_listbox.bind("<Control-Button-1>", self.show_preview_context_menu)
         self.preview_listbox.bind("<Button-2>", self.show_preview_context_menu)
 
+        self.output_frame = tk.Frame(self.tree_frame, bg="#f0f0f0")
+        self.output_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True, padx=5)
+
+        self.output_label = ttk.Label(self.output_frame, text="Output Folder Preview:")
+        self.output_label.pack(anchor='nw')
+
+        self.output_tree = ttk.Treeview(self.output_frame)
+        self.output_tree.heading('#0', text='Output Files and Folders', anchor='w')
+
+        # Scrollbar สำหรับ Output Treeview
+        self.output_scrollbar = ttk.Scrollbar(self.output_frame, orient="vertical", command=self.output_tree.yview)
+        self.output_tree.configure(yscrollcommand=self.output_scrollbar.set)
+
+        # จัดการ Layout
+        self.output_tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)  # วาง Treeview ก่อน
+        self.output_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+
     def check_inputs(self, event):
         if self.endpoint_entry.get() and self.access_key_entry.get() and self.secret_key_entry.get():
             self.connect_button.config(state=tk.NORMAL)
@@ -273,6 +290,30 @@ class FileManagerApp:
                 print(f"Error: Failed to download file '{file_path}': {str(e)}")
                 messagebox.showerror("Error", f"Failed to download file '{file_path}': {str(e)}")
 
+    # ฟังก์ชันใหม่สำหรับโหลดโครงสร้างโฟลเดอร์ใน Output Treeview
+    def load_output_tree(self):
+        # Clear the treeview
+        for item in self.output_tree.get_children():
+            self.output_tree.delete(item)
+
+        # Add output folder structure
+        if os.path.exists(self.output_folder):
+            self.insert_output_tree(self.output_folder, "")
+
+    def insert_output_tree(self, path, parent):
+        # Recursive function to add files/folders to the treeview
+        for item in os.listdir(path):
+            item_path = os.path.join(path, item)
+            if os.path.isdir(item_path):
+                # Add folder
+                folder_node = self.output_tree.insert(parent, 'end', text=item, open=False)
+                # Recursively add sub-items
+                self.insert_output_tree(item_path, folder_node)
+            else:
+                # Add file
+                self.output_tree.insert(parent, 'end', text=item, open=False)
+
+    # ในฟังก์ชัน select_output_folder:
     def select_output_folder(self):
         # เลือกโฟลเดอร์ปลายทางสำหรับการดาวน์โหลดไฟล์
         folder_selected = filedialog.askdirectory()
@@ -280,6 +321,15 @@ class FileManagerApp:
             self.output_folder = folder_selected
             messagebox.showinfo("Output Folder Selected", f"Output folder set to: {self.output_folder}")
             self.save_config(self.endpoint_entry.get(), self.access_key_entry.get(), self.secret_key_entry.get())
+            self.load_output_tree()  # โหลดโครงสร้างโฟลเดอร์ใน Output Treeview
+    
+    # def select_output_folder(self):
+    #     # เลือกโฟลเดอร์ปลายทางสำหรับการดาวน์โหลดไฟล์
+    #     folder_selected = filedialog.askdirectory()
+    #     if folder_selected:
+    #         self.output_folder = folder_selected
+    #         messagebox.showinfo("Output Folder Selected", f"Output folder set to: {self.output_folder}")
+    #         self.save_config(self.endpoint_entry.get(), self.access_key_entry.get(), self.secret_key_entry.get())
 
     def save_config(self, endpoint, access_key, secret_key):
         config = {
