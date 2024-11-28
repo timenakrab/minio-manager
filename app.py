@@ -3,6 +3,8 @@ from tkinter import ttk, messagebox, Menu, filedialog, simpledialog
 from minio import Minio
 import json
 import os
+import threading
+from concurrent.futures import ThreadPoolExecutor
 
 class FileManagerApp:
     def __init__(self, root):
@@ -241,41 +243,60 @@ class FileManagerApp:
             messagebox.showerror("Error", f"Failed to delete selected file: {str(e)}")
 
     def download_files(self):
-        selected_files = self.preview_listbox.get(0, tk.END)
-        if not selected_files:
-            messagebox.showwarning("Warning", "No files selected for download.")
-            return
+      selected_files = self.preview_listbox.get(0, tk.END)
+      if not selected_files:
+          messagebox.showwarning("Warning", "No files selected for download.")
+          return
 
-        self.progress_text.delete(1.0, tk.END)
+      self.progress_text.delete(1.0, tk.END)
+      self.download_button.config(state=tk.DISABLED)  # ปิดการใช้งานปุ่มระหว่างดาวน์โหลด
 
-        for file_path in selected_files:
-            try:
-                path_parts = file_path.split('/', 1)
-                if len(path_parts) != 2:
-                    messagebox.showerror("Error", f"Invalid file path: {file_path}")
-                    continue
-                bucket_name, object_name = path_parts
+      # สร้าง thread สำหรับดาวน์โหลด
+      download_thread = threading.Thread(target=self._download_files_thread, args=(selected_files,))
+      download_thread.start()
 
-                local_object_name = object_name.replace(':', '_')
-                local_path = os.path.join(self.output_folder, local_object_name)
-                local_dir = os.path.dirname(local_path)
-                if not os.path.exists(local_dir):
-                    os.makedirs(local_dir)
+    def _download_files_thread(self, selected_files):
+        with ThreadPoolExecutor(max_workers=5) as executor:
+            results = executor.map(self._download_single_file, selected_files)
 
-                response = self.minio_client.get_object(bucket_name, object_name)
-                total_size = int(response.headers.get('Content-Length', 0))
-                downloaded_size = 0
+        for result in results:
+            if result:  # ตรวจสอบว่าผลลัพธ์มีข้อความ
+                self._update_progress(result)
 
-                with open(local_path, 'wb') as file_data:
-                    for d in response.stream(32*1024):
-                        file_data.write(d)
-                        downloaded_size += len(d)
+        self._update_progress("All downloads completed.\n")
+        self.download_button.config(state=tk.NORMAL)
 
-                self.progress_text.insert(tk.END, f"'{object_name}': 100%\n")
-                self.progress_text.see(tk.END)
-            except Exception as e:
-                print(f"Error: Failed to download file '{file_path}': {str(e)}")
-                messagebox.showerror("Error", f"Failed to download file '{file_path}': {str(e)}")
+    def _download_single_file(self, file_path):
+        try:
+            path_parts = file_path.split('/', 1)
+            if len(path_parts) != 2:
+                return f"Invalid file path: {file_path}\n"
+
+            bucket_name, object_name = path_parts
+            local_object_name = object_name.replace(':', '_')
+            local_path = os.path.join(self.output_folder, local_object_name)
+            local_dir = os.path.dirname(local_path)
+
+            if not os.path.exists(local_dir):
+                os.makedirs(local_dir)
+
+            response = self.minio_client.get_object(bucket_name, object_name)
+            with open(local_path, 'wb') as file_data:
+                total_size = 0
+                for chunk in response.stream(5 * 1024 * 1024):  # Stream ด้วย chunk ขนาด 5 MB
+                    file_data.write(chunk)
+                    total_size += len(chunk)
+                    self._update_progress(f"Downloading '{object_name}': {total_size / (1024 * 1024):.2f} MB downloaded...\n")
+
+            return f"'{object_name}': Downloaded successfully\n"
+        except Exception as e:
+            return f"Error downloading '{file_path}': {str(e)}\n"
+
+    def _update_progress(self, message):
+        def update():
+            self.progress_text.insert(tk.END, message)
+            self.progress_text.see(tk.END)
+        self.root.after(0, update)
 
     def load_output_tree(self):
         for item in self.output_tree.get_children():
