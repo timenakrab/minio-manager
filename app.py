@@ -11,6 +11,8 @@ from urllib3 import PoolManager, Timeout
 class FileManagerApp:
     def __init__(self, root):
       self.root = root
+      self.minio_client = None
+      self.is_connected = False
       self.root.title("MinIO File Manager GUI")
       self.root.geometry("1024x720")
       self.root.configure(bg="#f0f0f0")
@@ -42,7 +44,8 @@ class FileManagerApp:
       self.connect_button = ttk.Button(input_frame, text="Connect", command=self.connect_to_minio, state=tk.DISABLED)
       self.connect_button.grid(row=0, column=6, padx=10)
 
-      self.output_folder = os.getcwd()
+      self.disconnect_button = ttk.Button(input_frame, text="Disconnect", command=self.disconnect_from_minio, state=tk.DISABLED)
+      self.disconnect_button.grid(row=0, column=7, padx=10)
 
       self.endpoint_entry.bind("<KeyRelease>", self.check_inputs)
       self.access_key_entry.bind("<KeyRelease>", self.check_inputs)
@@ -116,8 +119,6 @@ class FileManagerApp:
       self.refresh_output_button = ttk.Button(button_frame, text="Refresh Output Folders", command=self.refresh_output_folders)
       self.refresh_output_button.pack(side=tk.LEFT, padx=10)
 
-      self.load_config()
-
       self.menu = Menu(self.tree, tearoff=0)
       self.menu.add_command(label="Select", command=self.select_file)
       self.tree.bind("<Button-3>", self.show_context_menu)
@@ -131,6 +132,7 @@ class FileManagerApp:
       self.preview_listbox.bind("<Button-2>", self.show_preview_context_menu)
 
       self.is_windows = platform.system() == 'Windows'
+      self.load_config()
 
     def check_inputs(self, event):
         if self.endpoint_entry.get() and self.access_key_entry.get() and self.secret_key_entry.get():
@@ -139,6 +141,9 @@ class FileManagerApp:
             self.connect_button.config(state=tk.DISABLED)
 
     def connect_to_minio(self):
+        if self.is_connected:
+            messagebox.showinfo("Info", "Already connected to MinIO Server.")
+            return
         threading.Thread(target=self._connect_to_minio_thread).start()
 
     def _connect_to_minio_thread(self):
@@ -160,12 +165,25 @@ class FileManagerApp:
             )
 
             buckets = self.minio_client.list_buckets()
+
             self.root.after(0, lambda: messagebox.showinfo("Success", "Connected to MinIO Server successfully!"))
             self.root.after(0, lambda: self.save_config(endpoint, access_key, secret_key))
             self.root.after(0, self.load_buckets)
             self.root.after(0, lambda: self.refresh_button.config(state=tk.NORMAL))
+            self.root.after(0, lambda: self.disconnect_button.config(state=tk.NORMAL))
+            self.root.after(0, lambda: self.connect_button.config(state=tk.DISABLED))
         except Exception as e:
             self.root.after(0, lambda e=e: messagebox.showerror("Error", f"Failed to connect to MinIO: {str(e)}"))
+
+    def disconnect_from_minio(self):
+        self.minio_client = None
+        self.is_connected = False
+        self.refresh_button.config(state=tk.DISABLED)
+        self.disconnect_button.config(state=tk.DISABLED)
+        self.connect_button.config(state=tk.NORMAL)
+        for item in self.tree.get_children():
+            self.tree.delete(item)
+        messagebox.showinfo("Disconnected", "Disconnected from MinIO Server.")
 
     def load_buckets(self):
         for item in self.tree.get_children():
