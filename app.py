@@ -3,6 +3,7 @@ from tkinter import ttk, messagebox, Menu, filedialog, simpledialog
 from minio import Minio
 import json
 import os
+import platform
 import threading
 from concurrent.futures import ThreadPoolExecutor
 
@@ -17,7 +18,7 @@ class FileManagerApp:
       style = ttk.Style()
       style.configure("TLabel", font=("Arial", 12), padding=5)
       style.configure("TButton", font=("Arial", 12), padding=5)
-      style.configure("Treeview", font=("Arial", 10))
+      style.configure("Treeview", font=("Arial", 14))
 
       input_frame = tk.Frame(root, bg="#f0f0f0")
       input_frame.pack(pady=10, padx=20, fill=tk.X)
@@ -127,6 +128,8 @@ class FileManagerApp:
       self.preview_listbox.bind("<Button-3>", self.show_preview_context_menu)
       self.preview_listbox.bind("<Control-Button-1>", self.show_preview_context_menu)
       self.preview_listbox.bind("<Button-2>", self.show_preview_context_menu)
+
+      self.is_windows = platform.system() == 'Windows'
 
     def check_inputs(self, event):
         if self.endpoint_entry.get() and self.access_key_entry.get() and self.secret_key_entry.get():
@@ -276,7 +279,8 @@ class FileManagerApp:
                 return f"Invalid file path: {file_path}\n"
 
             bucket_name, object_name = path_parts
-            local_object_name = object_name.replace(':', '_')
+            # local_object_name = object_name.replace(':', '_')
+            local_object_name = object_name.replace(':', '_') if self.is_windows else object_name
             local_path = os.path.join(self.output_folder, local_object_name)
             local_dir = os.path.dirname(local_path)
 
