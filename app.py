@@ -1,6 +1,5 @@
 import tkinter as tk
 from tkinter import ttk, messagebox, Menu, filedialog, simpledialog
-import minio
 from minio import Minio
 import json
 import os
@@ -22,7 +21,6 @@ class FileManagerApp:
         input_frame = tk.Frame(root, bg="#f0f0f0")
         input_frame.pack(pady=10, padx=20, fill=tk.X)
 
-        # Input สำหรับเชื่อมต่อกับ MinIO Server ในแถวเดียวกัน
         self.endpoint_label = ttk.Label(input_frame, text="MinIO Endpoint:")
         self.endpoint_label.grid(row=0, column=0, sticky=tk.W, padx=5)
         self.endpoint_entry = ttk.Entry(input_frame, width=25)
@@ -77,27 +75,27 @@ class FileManagerApp:
         # Progress Frame (Right Side)
         self.progress_frame = tk.Frame(main_frame, bg="#f0f0f0")
         self.progress_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5)
+
         self.progress_label = ttk.Label(self.progress_frame, text="Download Progress:")
         self.progress_label.pack(anchor='nw')
+
         self.progress_text = tk.Text(self.progress_frame, height=10, wrap='none')
-        self.progress_text.pack(fill=tk.BOTH, expand=True)
+        self.progress_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
         self.progress_scrollbar = ttk.Scrollbar(self.progress_frame, orient="vertical", command=self.progress_text.yview)
-        self.progress_text.configure(yscrollcommand=self.progress_scrollbar.set)
         self.progress_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        self.progress_text.configure(yscrollcommand=self.progress_scrollbar.set)
 
         # Frame สำหรับปุ่มเพิ่มเติม
         button_frame = tk.Frame(root, bg="#f0f0f0")
         button_frame.pack(pady=10, padx=20, fill=tk.X)
 
-        # Download Button
         self.download_button = ttk.Button(button_frame, text="Download", command=self.download_files, state=tk.DISABLED)
         self.download_button.pack(side=tk.LEFT, padx=10)
 
-        # Output Folder Button
         self.output_folder_button = ttk.Button(button_frame, text="Select Output Folder", command=self.select_output_folder)
         self.output_folder_button.pack(side=tk.LEFT, padx=10)
 
-        # Refresh Button
         self.refresh_button = ttk.Button(button_frame, text="Refresh Buckets", command=self.load_buckets, state=tk.DISABLED)
         self.refresh_button.pack(side=tk.LEFT, padx=10)
 
@@ -119,7 +117,6 @@ class FileManagerApp:
         self.preview_listbox.bind("<Button-2>", self.show_preview_context_menu)
 
     def check_inputs(self, event):
-        # ตรวจสอบว่า input ทั้งหมดถูกกรอกแล้วหรือไม่
         if self.endpoint_entry.get() and self.access_key_entry.get() and self.secret_key_entry.get():
             self.connect_button.config(state=tk.NORMAL)
         else:
