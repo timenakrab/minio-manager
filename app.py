@@ -132,6 +132,7 @@ class FileManagerApp:
       self.preview_listbox.bind("<Button-2>", self.show_preview_context_menu)
 
       self.is_windows = platform.system() == 'Windows'
+      self.is_linux = platform.system() == 'Linux'
       self.load_config()
 
     def check_inputs(self, event):
@@ -307,8 +308,13 @@ class FileManagerApp:
                 return f"Invalid file path: {file_path}\n"
 
             bucket_name, object_name = path_parts
-            # local_object_name = object_name.replace(':', '_')
-            local_object_name = object_name.replace(':', '_') if self.is_windows else object_name
+            if self.is_windows:
+                local_object_name = object_name.replace(':', '__')
+            elif self.is_linux:
+                local_object_name = object_name.replace(':', '__')
+            else:
+                local_object_name = object_name
+
             local_path = os.path.join(self.output_folder, local_object_name)
             local_dir = os.path.dirname(local_path)
 
