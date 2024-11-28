@@ -12,6 +12,7 @@ class FileManagerApp:
       self.root.title("MinIO File Manager GUI")
       self.root.geometry("1024x720")
       self.root.configure(bg="#f0f0f0")
+      self.root.state('zoomed')
 
       style = ttk.Style()
       style.configure("TLabel", font=("Arial", 12), padding=5)
@@ -109,6 +110,9 @@ class FileManagerApp:
 
       self.refresh_button = ttk.Button(button_frame, text="Refresh Buckets", command=self.load_buckets, state=tk.DISABLED)
       self.refresh_button.pack(side=tk.LEFT, padx=10)
+
+      self.refresh_output_button = ttk.Button(button_frame, text="Refresh Output Folders", command=self.refresh_output_folders)
+      self.refresh_output_button.pack(side=tk.LEFT, padx=10)
 
       self.load_config()
 
@@ -304,6 +308,10 @@ class FileManagerApp:
 
         if os.path.exists(self.output_folder):
             self.insert_output_tree(self.output_folder, "")
+
+    def refresh_output_folders(self):
+        self.load_output_tree()
+        self._update_progress("Output folders refreshed.\n")
 
     def insert_output_tree(self, path, parent):
         for item in os.listdir(path):
