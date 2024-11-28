@@ -15,7 +15,7 @@ class FileManagerApp:
       self.is_connected = False
       self.root.title("MinIO File Manager GUI")
       self.root.geometry("1024x720")
-      self.root.configure(bg="#f0f0f0")
+      self.root.configure(bg="#323232")
       self.root.state('zoomed')
 
       style = ttk.Style()
@@ -23,7 +23,7 @@ class FileManagerApp:
       style.configure("TButton", font=("Arial", 12), padding=5)
       style.configure("Treeview", font=("Arial", 14))
 
-      input_frame = tk.Frame(root, bg="#f0f0f0")
+      input_frame = tk.Frame(root, bg="#323232")
       input_frame.pack(pady=10, padx=20, fill=tk.X)
 
       self.endpoint_label = ttk.Label(input_frame, text="MinIO Endpoint:")
@@ -51,7 +51,7 @@ class FileManagerApp:
       self.access_key_entry.bind("<KeyRelease>", self.check_inputs)
       self.secret_key_entry.bind("<KeyRelease>", self.check_inputs)
 
-      self.tree_frame = tk.Frame(root, bg="#f0f0f0")
+      self.tree_frame = tk.Frame(root, bg="#323232")
       self.tree_frame.pack(padx=20, pady=10, fill=tk.BOTH, expand=True)
 
       self.tree = ttk.Treeview(self.tree_frame)
@@ -63,7 +63,7 @@ class FileManagerApp:
       self.tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
       self.scrollbar.pack(side=tk.LEFT, fill=tk.Y)
 
-      self.output_frame = tk.Frame(self.tree_frame, bg="#f0f0f0")
+      self.output_frame = tk.Frame(self.tree_frame, bg="#323232")
       self.output_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True, padx=5)
 
       output_header_frame = tk.Frame(self.output_frame, bg="#e0e0e0")
@@ -78,10 +78,10 @@ class FileManagerApp:
       self.output_tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
       self.output_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
 
-      main_frame = tk.Frame(root, bg="#f0f0f0")
+      main_frame = tk.Frame(root, bg="#323232")
       main_frame.pack(padx=20, pady=10, fill=tk.BOTH, expand=True)
 
-      self.preview_frame = tk.Frame(main_frame, bg="#f0f0f0")
+      self.preview_frame = tk.Frame(main_frame, bg="#323232")
       self.preview_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5)
 
       self.preview_label = ttk.Label(self.preview_frame, text="Selected Files:")
@@ -91,7 +91,7 @@ class FileManagerApp:
       self.preview_listbox.pack(fill=tk.BOTH, expand=True)
       self.preview_listbox.bind('<<ListboxSelect>>', self.check_download_button_state)
 
-      self.progress_frame = tk.Frame(main_frame, bg="#f0f0f0")
+      self.progress_frame = tk.Frame(main_frame, bg="#323232")
       self.progress_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5)
 
       self.progress_label = ttk.Label(self.progress_frame, text="Download Progress:")
@@ -104,7 +104,7 @@ class FileManagerApp:
       self.progress_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
       self.progress_text.configure(yscrollcommand=self.progress_scrollbar.set)
 
-      button_frame = tk.Frame(root, bg="#f0f0f0")
+      button_frame = tk.Frame(root, bg="#323232")
       button_frame.pack(pady=10, padx=20, fill=tk.X)
 
       self.download_button = ttk.Button(button_frame, text="Download", command=self.download_files, state=tk.DISABLED)
