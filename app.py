@@ -5,7 +5,7 @@ import json
 import os
 import platform
 import threading
-from concurrent.futures import ThreadPoolExecutor, TimeoutError
+from concurrent.futures import ThreadPoolExecutor, TimeoutError, as_completed
 from urllib3 import PoolManager, Timeout
 
 class FileManagerApp:
@@ -107,6 +107,9 @@ class FileManagerApp:
       button_frame = tk.Frame(root, bg="#323232")
       button_frame.pack(pady=10, padx=20, fill=tk.X)
 
+      self.clear_button = ttk.Button(button_frame, text="Clear Selected Files", command=self.clear_selected_files, state=tk.NORMAL)
+      self.clear_button.pack(side=tk.LEFT, padx=10)
+
       self.download_button = ttk.Button(button_frame, text="Download", command=self.download_files, state=tk.DISABLED)
       self.download_button.pack(side=tk.LEFT, padx=10)
 
@@ -121,6 +124,7 @@ class FileManagerApp:
 
       self.menu = Menu(self.tree, tearoff=0)
       self.menu.add_command(label="Select", command=self.select_file)
+      self.menu.add_command(label="Upload", command=self.upload_to_folder)
       self.tree.bind("<Button-3>", self.show_context_menu)
       self.tree.bind("<Control-Button-1>", self.show_context_menu)
       self.tree.bind("<Button-2>", self.show_context_menu)
@@ -134,6 +138,69 @@ class FileManagerApp:
       self.is_windows = platform.system() == 'Windows'
       self.is_linux = platform.system() == 'Linux'
       self.load_config()
+
+    def upload_to_folder(self):
+        selected_item = self.tree.selection()[0]
+        folder_path = self.get_full_path(selected_item)
+
+        if 'file' in self.tree.item(selected_item, 'tags'):
+            messagebox.showerror("Error", "You can only upload to folders.")
+            return
+
+        folder_to_upload = filedialog.askdirectory()
+        if not folder_to_upload:
+            return
+
+        try:
+            base_folder_name = os.path.basename(folder_to_upload)
+            folder_only = f"{'/'.join(folder_path.split('/')[1:])}/{base_folder_name}".rstrip('/')
+
+            tasks = []
+
+            # ใช้ ThreadPoolExecutor สำหรับการอัปโหลดแบบมัลติเธรด
+            with ThreadPoolExecutor(max_workers=10) as executor:
+                for root, dirs, files in os.walk(folder_to_upload):
+                    for file_name in files:
+                        file_path = os.path.join(root, file_name)
+                        relative_path = os.path.relpath(file_path, folder_to_upload)
+                        object_name = f"{folder_only}/{relative_path}".lstrip('/')
+
+                        # สร้าง Task สำหรับการอัปโหลดไฟล์แต่ละไฟล์
+                        tasks.append(
+                            executor.submit(self._upload_single_file, folder_path.split('/')[0], object_name, file_path)
+                        )
+
+                # ประมวลผล Tasks พร้อมกันและจัดการข้อผิดพลาด
+                for future in as_completed(tasks):
+                    try:
+                        result = future.result()
+                        if result:
+                            self._update_progress(result)
+                    except Exception as e:
+                        self._update_progress(f"Error during upload: {str(e)}\n")
+
+            messagebox.showinfo("Upload Success", "All files in the folder were uploaded successfully!")
+            self.load_buckets()
+
+        except Exception as e:
+            general_error_message = f"Error walking through directory {folder_to_upload}: {str(e)}"
+            print(general_error_message)
+            messagebox.showerror("Upload Failed", general_error_message)
+
+    def _upload_single_file(self, bucket_name, object_name, file_path):
+        try:
+            with open(file_path, 'rb') as file_data:
+                self.minio_client.put_object(
+                    bucket_name=bucket_name,
+                    object_name=object_name,
+                    data=file_data,
+                    length=os.path.getsize(file_path)
+                )
+            return f"Uploaded: {object_name}\n"
+        except Exception as e:
+            error_message = f"Error during upload of {object_name}: {str(e)}"
+            print(error_message)
+            return error_message
 
     def check_inputs(self, event):
         if self.endpoint_entry.get() and self.access_key_entry.get() and self.secret_key_entry.get():
@@ -154,7 +221,7 @@ class FileManagerApp:
 
         try:
             http_client = PoolManager(
-                timeout=Timeout(connect=5, read=5),
+                timeout=Timeout(connect=10, read=60),
                 retries=False
             )
             self.minio_client = Minio(
@@ -228,6 +295,13 @@ class FileManagerApp:
         selected_item = self.tree.identify_row(event.y)
         if selected_item:
             self.tree.selection_set(selected_item)
+            
+            # ตรวจสอบว่าเป็นโฟลเดอร์หรือไม่
+            if 'file' not in self.tree.item(selected_item, 'tags'):
+                self.menu.entryconfig("Upload", state=tk.NORMAL)
+            else:
+                self.menu.entryconfig("Upload", state=tk.DISABLED)
+            
             self.menu.tk_popup(event.x_root, event.y_root)
 
     def show_preview_context_menu(self, event):
@@ -313,7 +387,7 @@ class FileManagerApp:
             elif self.is_linux:
                 local_object_name = object_name.replace(':', '__')
             else:
-                local_object_name = object_name
+                local_object_name = object_name.replace(':', '__')
 
             local_path = os.path.join(self.output_folder, local_object_name)
             local_dir = os.path.dirname(local_path)
@@ -366,6 +440,15 @@ class FileManagerApp:
             messagebox.showinfo("Output Folder Selected", f"Output folder set to: {self.output_folder}")
             self.save_config(self.endpoint_entry.get(), self.access_key_entry.get(), self.secret_key_entry.get())
             self.load_output_tree()
+
+    def clear_selected_files(self):
+      try:
+          self.preview_listbox.delete(0, tk.END)
+          self.check_download_button_state()  # อัปเดตสถานะของปุ่มดาวน์โหลด
+          self._update_progress("Cleared all selected files.\n")
+      except Exception as e:
+          print(f"Error: Failed to clear selected files: {str(e)}")
+          messagebox.showerror("Error", f"Failed to clear selected files: {str(e)}")
 
     def save_config(self, endpoint, access_key, secret_key):
         config = {
