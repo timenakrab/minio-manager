@@ -160,8 +160,22 @@ class FileManagerApp:
             # ใช้ ThreadPoolExecutor สำหรับการอัปโหลดแบบมัลติเธรด
             with ThreadPoolExecutor(max_workers=10) as executor:
                 for root, dirs, files in os.walk(folder_to_upload):
+                    # ตรวจสอบและปรับชื่อโฟลเดอร์
+                    adjusted_dirs = [d.replace('__', ':') for d in dirs]
+                    for original, adjusted in zip(dirs, adjusted_dirs):
+                        if original != adjusted:
+                            os.rename(os.path.join(root, original), os.path.join(root, adjusted))
+                    dirs[:] = adjusted_dirs  # อัปเดตชื่อในโครงสร้าง os.walk
+
                     for file_name in files:
-                        file_path = os.path.join(root, file_name)
+                        # ตรวจสอบและปรับชื่อไฟล์
+                        adjusted_file_name = file_name.replace('__', ':')
+                        if file_name != adjusted_file_name:
+                            os.rename(
+                                os.path.join(root, file_name),
+                                os.path.join(root, adjusted_file_name)
+                            )
+                        file_path = os.path.join(root, adjusted_file_name)
                         relative_path = os.path.relpath(file_path, folder_to_upload)
                         object_name = f"{folder_only}/{relative_path}".lstrip('/')
 
