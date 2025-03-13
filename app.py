@@ -243,6 +243,7 @@ class FileManagerApp:
                 access_key=access_key,
                 secret_key=secret_key,
                 secure=False,
+                # secure=True,
                 http_client=http_client
             )
 
@@ -397,10 +398,13 @@ class FileManagerApp:
 
             bucket_name, object_name = path_parts
             if self.is_windows:
+                # local_object_name = object_name
                 local_object_name = object_name.replace(':', '__')
             elif self.is_linux:
+                # local_object_name = object_name
                 local_object_name = object_name.replace(':', '__')
             else:
+                # local_object_name = object_name
                 local_object_name = object_name.replace(':', '__')
 
             local_path = os.path.join(self.output_folder, local_object_name)
